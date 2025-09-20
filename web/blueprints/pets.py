@@ -211,14 +211,13 @@ def edit_pet(pet_id):
             'color': request.form.get('color', '').strip() or None,
             'weight': request.form.get('weight') or None,
             'microchip_number': request.form.get('microchip_number', '').strip() or None,
-            'is_active': request.form.get('is_active') == 'on'
         }
         
-        # Convertir peso a float si existe
+        # Convertir peso a float si existe        
         if pet_data['weight']:
             try:
                 pet_data['weight'] = float(pet_data['weight'])
-            except ValueError:
+            except (ValueError, TypeError):
                 pet_data['weight'] = None
         
         # Actualizar mascota usando el service
@@ -249,7 +248,7 @@ def edit_pet(pet_id):
 @pets_bp.route('/<int:pet_id>/deactivate', methods=['POST'])
 def deactivate_pet(pet_id):
     """
-    RUTA: Desactivar mascota (soft delete)
+    RUTA: Desactivar/Activar mascota (toggle)
     """
     try:
         container = get_container()
@@ -260,19 +259,29 @@ def deactivate_pet(pet_id):
             flash('Mascota no encontrada.', 'error')
             return redirect(url_for('pets.list_pets'))
         
-        # Desactivar mascota
-        success = pet_service.deactivate_pet(pet_id)
+        # Verificar si es una acción de activar
+        activate = request.form.get('activate') == 'true'
         
-        if success:
-            flash(f'Mascota {pet.name} desactivada exitosamente.', 'success')
+        if activate:
+            # Activar mascota
+            success = pet_service.activate_pet(pet_id)  # Necesitas crear este método
+            if success:
+                flash(f'Mascota {pet.name} activada exitosamente.', 'success')
+            else:
+                flash('Error activando mascota.', 'error')
         else:
-            flash('Error desactivando mascota.', 'error')
+            # Desactivar mascota (comportamiento original)
+            success = pet_service.deactivate_pet(pet_id)
+            if success:
+                flash(f'Mascota {pet.name} desactivada exitosamente.', 'success')
+            else:
+                flash('Error desactivando mascota.', 'error')
         
-        return redirect(url_for('pets.view_pet', pet_id=pet_id))
+        return redirect(url_for('pets.edit_pet', pet_id=pet_id))
         
     except Exception as e:
-        print(f"Error desactivando mascota: {e}")
-        flash('Error desactivando mascota.', 'error')
+        print(f"Error cambiando estado de mascota: {e}")
+        flash('Error cambiando estado de mascota.', 'error')
         return redirect(url_for('pets.list_pets'))
 
 @pets_bp.route('/by-client/<int:client_id>')
