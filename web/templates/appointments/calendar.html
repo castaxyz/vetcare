@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Calendario de Citas - VetCare{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
+<style>
+.fc-toolbar-title {
+    font-size: 1.5rem !important;
+}
+.fc-event {
+    cursor: pointer;
+}
+.fc-daygrid-event {
+    font-size: 0.85rem;
+}
+.calendar-legend {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-calendar3 me-2"></i>Calendario de Citas
+            </h1>
+            <p class="text-muted mb-0">Vista calendario de todas las citas programadas</p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-list me-1"></i>Vista Lista
+                </a>
+                <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">
+                    <i class="bi bi-plus me-1"></i>Nueva Cita
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col">
+            <div class="card">
+                <div class="card-body py-2">
+                    <div class="calendar-legend">
+                        <small class="fw-bold me-3">Estados:</small>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #6c757d;"></div>
+                            <small>Programada</small>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #17a2b8;"></div>
+                            <small>Confirmada</small>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #ffc107;"></div>
+                            <small>En Progreso</small>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #28a745;"></div>
+                            <small>Completada</small>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #dc3545;"></div>
+                            <small>Cancelada</small>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #fd7e14;"></div>
+                            <small>No se presentó</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="appointmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles de la Cita</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="appointmentModalBody">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <a href="#" id="viewAppointmentBtn" class="btn btn-primary">Ver Detalles Completos</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/locales/es.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    const events = {{ calendar_events | safe }};
+    
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        buttonText: {
+            today: 'Hoy',
+            month: 'Mes',
+            week: 'Semana',
+            day: 'Día'
+        },
+        events: events,
+        eventClick: function(info) {
+            info.jsEvent.preventDefault();
+            
+            const modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
+            const modalBody = document.getElementById('appointmentModalBody');
+            const viewBtn = document.getElementById('viewAppointmentBtn');
+            
+            viewBtn.href = info.event.url || '#';
+            
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-sm-4"><strong>Título:</strong></div>
+                    <div class="col-sm-8">${info.event.title}</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-sm-4"><strong>Fecha:</strong></div>
+                    <div class="col-sm-8">${info.event.start.toLocaleDateString('es-ES')}</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-sm-4"><strong>Hora:</strong></div>
+                    <div class="col-sm-8">${info.event.start.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-sm-4"><strong>Estado:</strong></div>
+                    <div class="col-sm-8">
+                        <span class="badge" style="background-color: ${info.event.backgroundColor};">
+                            ${getStatusText(info.event.backgroundColor)}
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            modal.show();
+        },
+        dateClick: function(info) {
+            window.location.href = `/appointments/create?date=${info.dateStr}`;
+        },
+        eventDidMount: function(info) {
+            info.el.setAttribute('title', `${info.event.title}\nClick para ver detalles`);
+        }
+    });
+    
+    calendar.render();
+    
+    function getStatusText(color) {
+        const statusMap = {
+            '#6c757d': 'Programada',
+            '#17a2b8': 'Confirmada', 
+            '#ffc107': 'En Progreso',
+            '#28a745': 'Completada',
+            '#dc3545': 'Cancelada',
+            '#fd7e14': 'No se presentó'
+        };
+        return statusMap[color] || 'Desconocido';
+    }
+});
+</script>
+{% endblock %}
