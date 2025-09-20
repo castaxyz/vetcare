@@ -20,6 +20,7 @@ def list_pets():
     try:
         container = get_container()
         pet_service = container.get_pet_service()
+        client_service = container.get_client_service()  # ← Agregar esto
         
         # Verificar si hay filtros
         search_query = request.args.get('search', '').strip()
@@ -31,9 +32,27 @@ def list_pets():
         else:
             pets = pet_service.get_all_pets(active_only=not show_inactive)
         
+        # ← AGREGAR ESTA SECCIÓN ←
+        # Cargar información de propietarios
+        pets_with_owners = []
+        for pet in pets:
+            try:
+                owner = client_service.get_client_by_id(pet.client_id)
+                pets_with_owners.append({
+                    'pet': pet,
+                    'owner': owner
+                })
+            except Exception as e:
+                print(f"Error cargando propietario para mascota {pet.id}: {e}")
+                pets_with_owners.append({
+                    'pet': pet,
+                    'owner': None
+                })
+        # ← FIN DE SECCIÓN A AGREGAR ←
+        
         return render_template(
             'pets/list.html', 
-            pets=pets, 
+            pets_with_owners=pets_with_owners,  # ← Cambiar esto
             search_query=search_query,
             show_inactive=show_inactive
         )
@@ -41,7 +60,7 @@ def list_pets():
     except Exception as e:
         print(f"Error listando mascotas: {e}")
         flash('Error cargando lista de mascotas.', 'error')
-        return render_template('pets/list.html', pets=[], search_query='')
+        return render_template('pets/list.html', pets_with_owners=[], search_query='')  # ← Cambiar esto
 
 @pets_bp.route('/create', methods=['GET', 'POST'])
 def create_pet():
@@ -100,11 +119,16 @@ def create_pet():
         
     except ValueError as e:
         flash(str(e), 'error')
+        # Filtrar campos que podrían causar conflicto
+        form_data = {k: v for k, v in pet_data.items() 
+                    if k not in ['species', 'gender']}
         return render_template(
             'pets/create.html',
             species=PetSpecies,
             genders=PetGender,
-            **pet_data
+            selected_species=pet_data.get('species'),
+            selected_gender=pet_data.get('gender'),
+            **form_data
         )
     
     except Exception as e:

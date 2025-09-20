@@ -60,7 +60,7 @@ class PetService:
             gender=gender,
             color=pet_data.get('color', '').strip() or None,
             weight=pet_data.get('weight'),
-            microchip_number=pet_data.get('microchip_number', '').strip() or None,
+            microchip_number=(pet_data.get('microchip_number') or '').strip() or None,
             client_id=pet_data['client_id'],
             is_active=True,
             created_at=datetime.utcnow()

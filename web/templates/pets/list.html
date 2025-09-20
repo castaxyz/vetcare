@@ -45,9 +45,11 @@
     <!-- Lista de mascotas -->
     <div class="card">
         <div class="card-body">
-            {% if pets %}
+            {% if pets_with_owners %}
             <div class="row">
-                {% for pet in pets %}
+                {% for item in pets_with_owners %}
+                {% set pet = item.pet %}
+                {% set owner = item.owner %}
                 <div class="col-lg-4 col-md-6 mb-4">
                     <div class="card h-100 {{ 'border-secondary' if not pet.is_active }}">
                         <div class="card-body">
@@ -121,7 +123,19 @@
                             <!-- Propietario -->
                             <div class="border-top pt-2">
                                 <small class="text-muted">
-                                    <i class="bi bi-person me-1"></i>Propietario por cargar...
+                                    <i class="bi bi-person me-1"></i>
+                                    {% if owner %}
+                                        <a href="{{ url_for('clients.view_client', client_id=owner.id) }}" 
+                                           class="text-decoration-none">
+                                            {{ owner.full_name }}
+                                        </a>
+                                        {% if owner.phone %}
+                                            <br>
+                                            <i class="bi bi-telephone me-1"></i>{{ owner.phone }}
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-warning">Propietario no encontrado</span>
+                                    {% endif %}
                                 </small>
                             </div>
                         </div>
