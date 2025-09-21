@@ -1,0 +1,869 @@
+{% extends "base.html" %}
+
+{% block title %}Cita: {{ appointment.id }} - VetCare{% endblock %}
+
+{% block extra_css %}
+<style>
+    .appointment-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px 10px 0 0;
+        margin-bottom: 0;
+    }
+    
+    .status-badge {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    
+    .status-scheduled { background-color: #6c757d; }
+    .status-confirmed { background-color: #17a2b8; }
+    .status-in_progress { background-color: #ffc107; color: #000; }
+    .status-completed { background-color: #28a745; }
+    .status-cancelled { background-color: #dc3545; }
+    .status-no_show { background-color: #fd7e14; }
+    
+    .info-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    
+    .info-icon {
+        width: 40px;
+        color: #6c757d;
+        font-size: 1.1rem;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+        min-width: 120px;
+    }
+    
+    .info-value {
+        color: #212529;
+        flex-grow: 1;
+    }
+    
+    .action-section {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .pet-avatar {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    
+    .timeline-item {
+        border-left: 3px solid #dee2e6;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -6px;
+        top: 0.5rem;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #6c757d;
+    }
+    
+    .timeline-item.active {
+        border-left-color: #007bff;
+    }
+    
+    .timeline-item.active::before {
+        background: #007bff;
+    }
+    
+    .notes-section {
+        background: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 1rem;
+        border-radius: 0 4px 4px 0;
+    }
+    
+    @media (max-width: 768px) {
+        .appointment-header {
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .action-buttons {
+            justify-content: center;
+        }
+        
+        .info-item {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+        }
+        
+        .info-label {
+            min-width: auto;
+            margin-bottom: 0.25rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header de la Cita -->
+    <div class="card mb-4">
+        <div class="appointment-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-calendar-check me-3" style="font-size: 2rem;"></i>
+                        <div>
+                            <h2 class="mb-1">Cita #{{ appointment.id }}</h2>
+                            <p class="mb-0 opacity-75">
+                                {{ appointment.appointment_date.strftime('%A, %d de %B de %Y') }} a las 
+                                {{ appointment.appointment_date.strftime('%H:%M') }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <span class="status-badge status-{{ appointment.status.value }}">
+                        {% if appointment.status.value == 'scheduled' %}Programada
+                        {% elif appointment.status.value == 'confirmed' %}Confirmada
+                        {% elif appointment.status.value == 'in_progress' %}En Progreso
+                        {% elif appointment.status.value == 'completed' %}Completada
+                        {% elif appointment.status.value == 'cancelled' %}Cancelada
+                        {% elif appointment.status.value == 'no_show' %}No Asistió
+                        {% else %}{{ appointment.status.value }}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información Principal -->
+        <div class="col-lg-8">
+            <!-- Información de la Mascota y Cliente -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-heart me-2"></i>Información del Paciente</h5>
+                </div>
+                <div class="card-body">
+                    {% if pet %}
+                    <div class="row">
+                        <div class="col-md-2 text-center">
+                            <div class="pet-avatar">
+                                {{ pet.name[0].upper() }}
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="info-item">
+                                <i class="bi bi-heart-fill info-icon"></i>
+                                <span class="info-label">Nombre:</span>
+                                <span class="info-value">{{ pet.name }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-collection info-icon"></i>
+                                <span class="info-label">Especie:</span>
+                                <span class="info-value">{{ pet.species.value.title() }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-tag info-icon"></i>
+                                <span class="info-label">Raza:</span>
+                                <span class="info-value">{{ pet.breed or 'No especificada' }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-calendar3 info-icon"></i>
+                                <span class="info-label">Edad:</span>
+                                <span class="info-value">
+                                    {% if pet.birth_date %}
+                                        {{ pet.age }} años
+                                    {% else %}
+                                        No especificada
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            {% if client %}
+                            <div class="info-item">
+                                <i class="bi bi-person info-icon"></i>
+                                <span class="info-label">Propietario:</span>
+                                <span class="info-value">
+                                    <a href="{{ url_for('clients.view_client', client_id=client.id) }}" class="text-decoration-none">
+                                        {{ client.full_name }}
+                                    </a>
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-telephone info-icon"></i>
+                                <span class="info-label">Teléfono:</span>
+                                <span class="info-value">
+                                    {% if client.phone %}
+                                        <a href="tel:{{ client.phone }}" class="text-decoration-none">{{ client.phone }}</a>
+                                    {% else %}
+                                        No disponible
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-envelope info-icon"></i>
+                                <span class="info-label">Email:</span>
+                                <span class="info-value">
+                                    {% if client.email %}
+                                        <a href="mailto:{{ client.email }}" class="text-decoration-none">{{ client.email }}</a>
+                                    {% else %}
+                                        No disponible
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-geo-alt info-icon"></i>
+                                <span class="info-label">Dirección:</span>
+                                <span class="info-value">{{ client.address or 'No disponible' }}</span>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Información del propietario no disponible
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Información de la mascota no disponible
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Detalles de la Cita -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clipboard-pulse me-2"></i>Detalles de la Cita</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <i class="bi bi-calendar-event info-icon"></i>
+                                <span class="info-label">Fecha:</span>
+                                <span class="info-value">{{ appointment.appointment_date.strftime('%d/%m/%Y') }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-clock info-icon"></i>
+                                <span class="info-label">Hora:</span>
+                                <span class="info-value">{{ appointment.appointment_date.strftime('%H:%M') }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-stopwatch info-icon"></i>
+                                <span class="info-label">Duración:</span>
+                                <span class="info-value">{{ appointment.duration_minutes }} minutos</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-clipboard-check info-icon"></i>
+                                <span class="info-label">Tipo:</span>
+                                <span class="info-value">{{ appointment.appointment_type.value.replace('_', ' ').title() }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <i class="bi bi-person-badge info-icon"></i>
+                                <span class="info-label">Veterinario:</span>
+                                <span class="info-value">
+                                    {% if veterinarian %}
+                                        Dr(a). {{ veterinarian.first_name }} {{ veterinarian.last_name }}
+                                    {% else %}
+                                        Por asignar
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-person-plus info-icon"></i>
+                                <span class="info-label">Creado por:</span>
+                                <span class="info-value">
+                                    {% if creator %}
+                                        {{ creator.first_name }} {{ creator.last_name }}
+                                    {% else %}
+                                        Sistema
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-calendar-plus info-icon"></i>
+                                <span class="info-label">Fecha creación:</span>
+                                <span class="info-value">{{ appointment.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                            </div>
+                            {% if appointment.updated_at %}
+                            <div class="info-item">
+                                <i class="bi bi-arrow-repeat info-icon"></i>
+                                <span class="info-label">Última actualización:</span>
+                                <span class="info-value">{{ appointment.updated_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if appointment.reason %}
+                    <div class="mt-3">
+                        <div class="notes-section">
+                            <h6><i class="bi bi-chat-text me-2"></i>Motivo de la Cita</h6>
+                            <p class="mb-0">{{ appointment.reason }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if appointment.notes %}
+                    <div class="mt-3">
+                        <div class="notes-section">
+                            <h6><i class="bi bi-journal-text me-2"></i>Notas Adicionales</h6>
+                            <p class="mb-0">{{ appointment.notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if appointment.completion_notes %}
+                    <div class="mt-3">
+                        <div class="alert alert-success">
+                            <h6><i class="bi bi-check-circle me-2"></i>Notas de Finalización</h6>
+                            <p class="mb-0">{{ appointment.completion_notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if appointment.cancellation_reason %}
+                    <div class="mt-3">
+                        <div class="alert alert-danger">
+                            <h6><i class="bi bi-x-circle me-2"></i>Motivo de Cancelación</h6>
+                            <p class="mb-0">{{ appointment.cancellation_reason }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Acciones -->
+        <div class="col-lg-4">
+            <!-- Acciones Principales -->
+            <div class="action-section">
+                <h5><i class="bi bi-gear me-2"></i>Acciones</h5>
+                
+                {% if appointment.status.value == 'scheduled' %}
+                <div class="action-buttons mb-3">
+                    <form method="post" action="{{ url_for('appointments.confirm_appointment', appointment_id=appointment.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-1"></i>Confirmar Cita
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if appointment.status.value == 'confirmed' %}
+                <div class="action-buttons mb-3">
+                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#startAppointmentModal">
+                        <i class="bi bi-play-circle me-1"></i>Iniciar Atención
+                    </button>
+                </div>
+                {% endif %}
+
+                {% if appointment.status.value == 'in_progress' %}
+                <div class="action-buttons mb-3">
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#completeAppointmentModal">
+                        <i class="bi bi-check-circle me-1"></i>Completar Cita
+                    </button>
+                </div>
+                {% endif %}
+
+                {% if appointment.status.value in ['scheduled', 'confirmed'] %}
+                <div class="action-buttons mb-3">
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelAppointmentModal">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar Cita
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- Acciones Secundarias -->
+                <hr>
+                <div class="action-buttons">
+                    <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Volver
+                    </a>
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#quickActionsModal">
+                        <i class="bi bi-lightning me-1"></i>Acciones Rápidas
+                    </button>
+                    {% if pet %}
+                    <a href="{{ url_for('pets.view_pet', pet_id=pet.id) }}" class="btn btn-outline-info">
+                        <i class="bi bi-heart me-1"></i>Ver Mascota
+                    </a>
+                    {% endif %}
+                    {% if client %}
+                    <a href="{{ url_for('clients.view_client', client_id=client.id) }}" class="btn btn-outline-success">
+                        <i class="bi bi-person me-1"></i>Ver Cliente
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Timeline de Estado -->
+            <div class="action-section">
+                <h5><i class="bi bi-clock-history me-2"></i>Historial de Estados</h5>
+                <div class="timeline-item {% if appointment.status.value == 'scheduled' %}active{% endif %}">
+                    <h6 class="mb-1">Programada</h6>
+                    <small class="text-muted">{{ appointment.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                </div>
+                
+                {% if appointment.status.value in ['confirmed', 'in_progress', 'completed'] %}
+                <div class="timeline-item {% if appointment.status.value == 'confirmed' %}active{% endif %}">
+                    <h6 class="mb-1">Confirmada</h6>
+                    <small class="text-muted">Fecha de confirmación</small>
+                </div>
+                {% endif %}
+                
+                {% if appointment.status.value in ['in_progress', 'completed'] %}
+                <div class="timeline-item {% if appointment.status.value == 'in_progress' %}active{% endif %}">
+                    <h6 class="mb-1">En Progreso</h6>
+                    <small class="text-muted">Atención iniciada</small>
+                </div>
+                {% endif %}
+                
+                {% if appointment.status.value == 'completed' %}
+                <div class="timeline-item active">
+                    <h6 class="mb-1">Completada</h6>
+                    <small class="text-muted">Atención finalizada</small>
+                </div>
+                {% endif %}
+                
+                {% if appointment.status.value == 'cancelled' %}
+                <div class="timeline-item" style="border-left-color: #dc3545;">
+                    <h6 class="mb-1" style="color: #dc3545;">Cancelada</h6>
+                    <small class="text-muted">Cita cancelada</small>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Información Adicional -->
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6><i class="bi bi-info-circle me-2"></i>Información</h6>
+                    <ul class="list-unstyled small mb-0">
+                        <li><i class="bi bi-clock me-1"></i>Duración estimada: {{ appointment.duration_minutes }} min</li>
+                        <li><i class="bi bi-calendar-x me-1"></i>Tiempo hasta la cita: 
+                            {% set now = moment() %}
+                            {% if appointment.appointment_date.date() == now.date() %}
+                                <span class="text-success fw-bold">Hoy</span>
+                            {% elif appointment.appointment_date.date() > now.date() %}
+                                <span class="text-info">{{ (appointment.appointment_date.date() - now.date()).days }} días</span>
+                            {% else %}
+                                <span class="text-muted">Pasada</span>
+                            {% endif %}
+                        </li>
+                        <li><i class="bi bi-hash me-1"></i>ID de cita: {{ appointment.id }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals para Acciones -->
+
+<!-- Modal Completar Cita -->
+<div class="modal fade" id="completeAppointmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle me-2"></i>Completar Cita
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('appointments.complete_appointment', appointment_id=appointment.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="completion_notes" class="form-label">Notas de Finalización</label>
+                        <textarea class="form-control" id="completion_notes" name="completion_notes" rows="4" 
+                                  placeholder="Describe el resultado de la consulta, tratamientos aplicados, recomendaciones, etc."></textarea>
+                        <div class="form-text">Opcional: Información sobre el resultado de la cita</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i>Completar Cita
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cancelar Cita -->
+<div class="modal fade" id="cancelAppointmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar Cita
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('appointments.cancel_appointment', appointment_id=appointment.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        ¿Está seguro de que desea cancelar esta cita?
+                    </div>
+                    <div class="mb-3">
+                        <label for="cancellation_reason" class="form-label">Motivo de Cancelación</label>
+                        <textarea class="form-control" id="cancellation_reason" name="cancellation_reason" rows="3" 
+                                  placeholder="Indique el motivo de la cancelación..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No Cancelar</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>Sí, Cancelar Cita
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Iniciar Atención (para citas confirmadas) -->
+<div class="modal fade" id="startAppointmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-play-circle me-2"></i>Iniciar Atención
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="#" id="startAppointmentForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        ¿Desea marcar esta cita como "En Progreso" para indicar que la atención ha comenzado?
+                    </div>
+                    <p class="mb-3">Esto cambiará el estado de la cita y notificará que la mascota está siendo atendida.</p>
+                    
+                    <div class="mb-3">
+                        <label for="start_notes" class="form-label">Notas Iniciales (Opcional)</label>
+                        <textarea class="form-control" id="start_notes" name="start_notes" rows="3" 
+                                  placeholder="Observaciones iniciales, síntomas observados, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-play-circle me-1"></i>Iniciar Atención
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Acciones Rápidas -->
+<div class="modal fade" id="quickActionsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-lightning me-2"></i>Acciones Rápidas
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-calendar-plus me-2"></i>Programar</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('appointments.create_appointment', pet_id=pet.id if pet else '') }}" 
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-calendar-plus me-1"></i>Nueva Cita para {{ pet.name if pet else 'esta mascota' }}
+                            </a>
+                            <a href="{{ url_for('appointments.create_appointment') }}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-plus-circle me-1"></i>Cita para Otra Mascota
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-telephone me-2"></i>Contacto</h6>
+                        <div class="d-grid gap-2">
+                            {% if client and client.phone %}
+                            <a href="tel:{{ client.phone }}" class="btn btn-outline-success">
+                                <i class="bi bi-telephone me-1"></i>Llamar a {{ client.first_name }}
+                            </a>
+                            {% endif %}
+                            {% if client and client.email %}
+                            <a href="mailto:{{ client.email }}?subject=Cita #{{ appointment.id }} - {{ pet.name if pet else 'Mascota' }}" 
+                               class="btn btn-outline-info">
+                                <i class="bi bi-envelope me-1"></i>Enviar Email
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-3">
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-printer me-2"></i>Documentos</h6>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-secondary" onclick="printAppointment()">
+                                <i class="bi bi-printer me-1"></i>Imprimir Detalles
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="generateReport()">
+                                <i class="bi bi-file-earmark-text me-1"></i>Generar Reporte
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-share me-2"></i>Compartir</h6>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-secondary" onclick="copyAppointmentLink()">
+                                <i class="bi bi-link-45deg me-1"></i>Copiar Enlace
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="shareAppointment()">
+                                <i class="bi bi-share me-1"></i>Compartir Información
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Confirmaciones para acciones críticas
+    const confirmButtons = document.querySelectorAll('[data-confirm]');
+    confirmButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            if (!confirm(this.dataset.confirm)) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // Auto-enfoque en modales
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.addEventListener('shown.bs.modal', function() {
+            const textarea = this.querySelector('textarea');
+            if (textarea) {
+                textarea.focus();
+            }
+        });
+    });
+
+    // Validación de formularios en modales
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const requiredTextarea = this.querySelector('textarea[required]');
+            if (requiredTextarea && !requiredTextarea.value.trim()) {
+                e.preventDefault();
+                alert('Por favor complete el campo requerido.');
+                requiredTextarea.focus();
+            }
+        });
+    });
+
+    // Actualizar tiempo hasta la cita cada minuto
+    updateTimeUntilAppointment();
+    setInterval(updateTimeUntilAppointment, 60000);
+});
+
+function updateTimeUntilAppointment() {
+    const appointmentDate = new Date('{{ appointment.appointment_date.isoformat() }}');
+    const now = new Date();
+    const timeDiff = appointmentDate - now;
+    
+    const timeElement = document.querySelector('.time-until-appointment');
+    if (timeElement && timeDiff > 0) {
+        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (days > 0) {
+            timeElement.textContent = `${days} día${days > 1 ? 's' : ''}`;
+        } else if (hours > 0) {
+            timeElement.textContent = `${hours}h ${minutes}m`;
+        } else if (minutes > 0) {
+            timeElement.textContent = `${minutes} minuto${minutes > 1 ? 's' : ''}`;
+        } else {
+            timeElement.textContent = 'Ahora';
+            timeElement.className = 'text-danger fw-bold';
+        }
+    }
+}
+
+// Funciones para acciones rápidas
+function printAppointment() {
+    const printContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+            <h2>Detalles de la Cita #{{ appointment.id }}</h2>
+            <hr>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h3>Información de la Mascota</h3>
+                    <p><strong>Nombre:</strong> {{ pet.name if pet else 'N/A' }}</p>
+                    <p><strong>Especie:</strong> {{ pet.species.value.title() if pet else 'N/A' }}</p>
+                    <p><strong>Raza:</strong> {{ pet.breed or 'No especificada' if pet else 'N/A' }}</p>
+                </div>
+                <div>
+                    <h3>Información del Propietario</h3>
+                    <p><strong>Nombre:</strong> {{ client.full_name if client else 'N/A' }}</p>
+                    <p><strong>Teléfono:</strong> {{ client.phone if client and client.phone else 'N/A' }}</p>
+                    <p><strong>Email:</strong> {{ client.email if client and client.email else 'N/A' }}</p>
+                </div>
+            </div>
+            <h3>Detalles de la Cita</h3>
+            <p><strong>Fecha:</strong> {{ appointment.appointment_date.strftime('%d/%m/%Y %H:%M') }}</p>
+            <p><strong>Tipo:</strong> {{ appointment.appointment_type.value.replace('_', ' ').title() }}</p>
+            <p><strong>Estado:</strong> {{ appointment.status.value.title() }}</p>
+            <p><strong>Veterinario:</strong> {{ veterinarian.first_name + ' ' + veterinarian.last_name if veterinarian else 'Por asignar' }}</p>
+            {% if appointment.reason %}
+            <p><strong>Motivo:</strong> {{ appointment.reason }}</p>
+            {% endif %}
+            <hr>
+            <p style="text-align: center; color: #666;">Impreso el {{ moment().strftime('%d/%m/%Y %H:%M') }}</p>
+        </div>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function generateReport() {
+    // Implementar generación de reporte
+    alert('Funcionalidad de reporte en desarrollo');
+}
+
+function copyAppointmentLink() {
+    const currentUrl = window.location.href;
+    navigator.clipboard.writeText(currentUrl).then(() => {
+        showNotification('Enlace copiado al portapapeles', 'success');
+    }).catch(() => {
+        // Fallback para navegadores que no soportan clipboard
+        const textArea = document.createElement('textarea');
+        textArea.value = currentUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showNotification('Enlace copiado al portapapeles', 'success');
+    });
+}
+
+function shareAppointment() {
+    const shareData = {
+        title: 'Cita Veterinaria #{{ appointment.id }}',
+        text: '{{ pet.name if pet else "Mascota" }} - {{ appointment.appointment_date.strftime("%d/%m/%Y %H:%M") }}',
+        url: window.location.href
+    };
+    
+    if (navigator.share) {
+        navigator.share(shareData);
+    } else {
+        copyAppointmentLink();
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'p':
+                e.preventDefault();
+                printAppointment();
+                break;
+            case 'c':
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    copyAppointmentLink();
+                }
+                break;
+            case 'Escape':
+                // Cerrar modales abiertos
+                const openModals = document.querySelectorAll('.modal.show');
+                openModals.forEach(modal => {
+                    bootstrap.Modal.getInstance(modal)?.hide();
+                });
+                break;
+        }
+    }
+});
+</script>
+{% endblock %}

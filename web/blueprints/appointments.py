@@ -394,3 +394,15 @@ def get_status_color(status: AppointmentStatus) -> str:
         AppointmentStatus.NO_SHOW: '#fd7e14'      # Naranja
     }
     return color_map.get(status, '#6c757d')
+
+@appointments_bp.route('/<int:appointment_id>/start', methods=['POST'])
+def start_appointment(appointment_id):
+    """Cambiar estado a 'in_progress'"""
+    # Implementar lógica para cambiar estado
+    pass
+
+@appointments_bp.route('/<int:appointment_id>/edit', methods=['GET', 'POST'])
+def edit_appointment(appointment_id):
+    """Editar detalles de la cita"""
+    # Implementar edición de citas
+    pass
