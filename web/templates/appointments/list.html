@@ -4,216 +4,221 @@
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="h3 mb-0">
-                <i class="bi bi-calendar-check me-2"></i>Citas
-            </h1>
-            <p class="text-muted mb-0">Gestión de citas veterinarias</p>
+    <!-- Header Simple -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-calendar-check me-2"></i>Lista de Citas</h2>
+            <p class="text-muted mb-0">Gestiona las citas veterinarias</p>
         </div>
-        <div class="col-auto">
-            <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">
-                <i class="bi bi-plus me-1"></i>Nueva Cita
-            </a>
-        </div>
+        <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Nueva Cita
+        </a>
     </div>
 
-    <!-- Filtros -->
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <form method="get" class="d-flex">
-                <input type="date" 
-                       class="form-control me-2" 
-                       name="date" 
-                       value="{{ date_filter }}"
-                       onchange="this.form.submit()">
-                <input type="hidden" name="status" value="{{ status_filter }}">
-            </form>
-        </div>
-        <div class="col-md-4">
-            <form method="get">
-                <input type="hidden" name="date" value="{{ date_filter }}">
-                <select class="form-select" name="status" onchange="this.form.submit()">
-                    <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>Todos los estados</option>
-                    <option value="scheduled" {{ 'selected' if status_filter == 'scheduled' else '' }}>Programadas</option>
-                    <option value="confirmed" {{ 'selected' if status_filter == 'confirmed' else '' }}>Confirmadas</option>
-                    <option value="in_progress" {{ 'selected' if status_filter == 'in_progress' else '' }}>En Progreso</option>
-                    <option value="completed" {{ 'selected' if status_filter == 'completed' else '' }}>Completadas</option>
-                    <option value="cancelled" {{ 'selected' if status_filter == 'cancelled' else '' }}>Canceladas</option>
-                </select>
-            </form>
-        </div>
-        <div class="col-md-4 text-end">
-            <a href="{{ url_for('appointments.calendar_view') }}" class="btn btn-outline-info">
-                <i class="bi bi-calendar3 me-1"></i>Vista Calendario
-            </a>
-        </div>
-    </div>
-
-    <!-- Lista de citas -->
-    <div class="card">
-        <div class="card-header">
-            <h6 class="mb-0">
-                <i class="bi bi-calendar-day me-2"></i>
-                Citas del {{ filter_date_obj.strftime('%d de %B de %Y') if filter_date_obj }}
-            </h6>
-        </div>
+    <!-- Filtros Básicos -->
+    <div class="card mb-4">
         <div class="card-body">
-            {% if appointments_with_info %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Hora</th>
-                            <th>Mascota</th>
-                            <th>Propietario</th>
-                            <th>Tipo</th>
-                            <th>Veterinario</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in appointments_with_info %}
-                        {% set appointment = item.appointment %}
-                        {% set pet = item.pet %}
-                        {% set client = item.client %}
-                        {% set veterinarian = item.veterinarian %}
-                        <tr>
-                            <td class="fw-bold">
-                                {{ appointment.appointment_date.strftime('%H:%M') }}
-                                <br>
-                                <small class="text-muted">
-                                    {{ appointment.duration_minutes }}min
-                                </small>
-                            </td>
-                            <td>
-                                {% if pet %}
-                                    <i class="bi bi-heart-fill text-danger me-1"></i>
-                                    <strong>{{ pet.name }}</strong>
-                                    <br>
-                                    <small class="text-muted">{{ pet.species.value.title() }}</small>
-                                {% else %}
-                                    <span class="text-muted">Mascota no encontrada</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if client %}
-                                    <i class="bi bi-person me-1"></i>{{ client.full_name }}
-                                    {% if client.phone %}
-                                    <br><small class="text-muted">{{ client.phone }}</small>
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="date" class="form-label">Fecha</label>
+                    <input type="date" class="form-control" id="date" name="date" 
+                           value="{{ date_filter or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Estado</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="all" {% if not status_filter or status_filter == 'all' %}selected{% endif %}>Todos los estados</option>
+                        {% if appointment_statuses %}
+                            {% for status in appointment_statuses %}
+                                <option value="{{ status.value }}" {% if status_filter == status.value %}selected{% endif %}>
+                                    {% if status.value == 'scheduled' %}Programada
+                                    {% elif status.value == 'confirmed' %}Confirmada
+                                    {% elif status.value == 'in_progress' %}En Progreso
+                                    {% elif status.value == 'completed' %}Completada
+                                    {% elif status.value == 'cancelled' %}Cancelada
+                                    {% elif status.value == 'no_show' %}No Asistió
+                                    {% else %}{{ status.value.title() }}
                                     {% endif %}
-                                {% else %}
-                                    <span class="text-muted">-</span>
+                                </option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-funnel me-1"></i>Filtrar
+                    </button>
+                    <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Debug Info (temporal) -->
+    {% if date_filter %}
+    <div class="alert alert-info">
+        <strong>Debug:</strong> Filtrando por fecha: {{ date_filter }} 
+        | Encontradas: {{ appointments_with_info|length }} citas
+        {% if appointments_with_info %}
+        | Fechas de citas: 
+        {% for info in appointments_with_info %}
+            {{ info.appointment.appointment_date.strftime('%Y-%m-%d') }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+        {% endif %}
+    </div>
+    {% endif %}
+    {% if appointments_with_info %}
+        <div class="row">
+            {% for appointment_info in appointments_with_info %}
+                {% set appointment = appointment_info.appointment %}
+                {% set pet = appointment_info.pet %}
+                {% set client = appointment_info.client %}
+                {% set veterinarian = appointment_info.veterinarian %}
+                
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100">
+                        <!-- Header de la Cita -->
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">
+                                    <i class="bi bi-clock me-1"></i>
+                                    {{ appointment.appointment_date.strftime('%H:%M') }}
+                                </h6>
+                                <small class="text-muted">
+                                    {{ appointment.appointment_date.strftime('%d/%m/%Y') }}
+                                </small>
+                            </div>
+                            <span class="badge 
+                                {% if appointment.status.value == 'scheduled' %}bg-secondary
+                                {% elif appointment.status.value == 'confirmed' %}bg-info
+                                {% elif appointment.status.value == 'in_progress' %}bg-warning text-dark
+                                {% elif appointment.status.value == 'completed' %}bg-success
+                                {% elif appointment.status.value == 'cancelled' %}bg-danger
+                                {% elif appointment.status.value == 'no_show' %}bg-dark
+                                {% endif %}">
+                                {% if appointment.status.value == 'scheduled' %}Programada
+                                {% elif appointment.status.value == 'confirmed' %}Confirmada
+                                {% elif appointment.status.value == 'in_progress' %}En Progreso
+                                {% elif appointment.status.value == 'completed' %}Completada
+                                {% elif appointment.status.value == 'cancelled' %}Cancelada
+                                {% elif appointment.status.value == 'no_show' %}No Asistió
                                 {% endif %}
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary">
-                                    {{ appointment.appointment_type.value.replace('_', ' ').title() }}
-                                </span>
-                                {% if appointment.reason %}
-                                <br><small class="text-muted">{{ appointment.reason[:30] }}...</small>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if veterinarian %}
-                                    <i class="bi bi-person-badge me-1"></i>{{ veterinarian.first_name }}
-                                {% else %}
-                                    <span class="text-muted">Sin asignar</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% set status = appointment.status.value %}
-                                {% if status == 'scheduled' %}
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-clock me-1"></i>Programada
-                                    </span>
-                                {% elif status == 'confirmed' %}
-                                    <span class="badge bg-info">
-                                        <i class="bi bi-check-circle me-1"></i>Confirmada
-                                    </span>
-                                {% elif status == 'in_progress' %}
-                                    <span class="badge bg-warning">
-                                        <i class="bi bi-play-circle me-1"></i>En Progreso
-                                    </span>
-                                {% elif status == 'completed' %}
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-check-circle-fill me-1"></i>Completada
-                                    </span>
-                                {% elif status == 'cancelled' %}
-                                    <span class="badge bg-danger">
-                                        <i class="bi bi-x-circle me-1"></i>Cancelada
-                                    </span>
-                                {% elif status == 'no_show' %}
-                                    <span class="badge bg-warning">
-                                        <i class="bi bi-person-x me-1"></i>No se presentó
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{{ url_for('appointments.view_appointment', appointment_id=appointment.id) }}" 
-                                       class="btn btn-outline-primary" title="Ver detalles">
-                                        <i class="bi bi-eye"></i>
+                            </span>
+                        </div>
+
+                        <!-- Información Principal -->
+                        <div class="card-body">
+                            <!-- Mascota -->
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" 
+                                     style="width: 40px; height: 40px;">
+                                    <i class="bi bi-heart"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">{{ pet.name if pet else 'Mascota desconocida' }}</h6>
+                                    <small class="text-muted">
+                                        {{ pet.species.value.title() if pet else 'N/A' }} • 
+                                        {{ appointment.appointment_type.value.replace('_', ' ').title() }}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Cliente -->
+                            {% if client %}
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-person me-2 text-muted"></i>
+                                    <span>{{ client.full_name }}</span>
+                                </div>
+                                {% if client.phone %}
+                                <div class="d-flex align-items-center mt-1">
+                                    <i class="bi bi-telephone me-2 text-muted"></i>
+                                    <a href="tel:{{ client.phone }}" class="text-decoration-none">
+                                        {{ client.phone }}
                                     </a>
-                                    
-                                    {% if appointment.can_be_modified %}
-                                    <div class="btn-group btn-group-sm">
-                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" 
-                                                data-bs-toggle="dropdown">
-                                            <span class="visually-hidden">Más acciones</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            <!-- Veterinario -->
+                            {% if veterinarian %}
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-person-badge me-2 text-muted"></i>
+                                    <span>Dr(a). {{ veterinarian.first_name }} {{ veterinarian.last_name }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Motivo -->
+                            {% if appointment.reason %}
+                            <div class="mb-3">
+                                <div class="text-muted small">
+                                    <i class="bi bi-chat-text me-1"></i>
+                                    {{ appointment.reason }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Acciones -->
+                        <div class="card-footer">
+                            <div class="d-flex justify-content-between">
+                                <!-- Acciones según estado -->
+                                <div>
+                                    {% if appointment.status.value == 'scheduled' %}
+                                        <form method="post" action="{{ url_for('appointments.confirm_appointment', appointment_id=appointment.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="bi bi-check-circle me-1"></i>Confirmar
+                                            </button>
+                                        </form>
+                                    {% elif appointment.status.value == 'confirmed' %}
+                                        <button class="btn btn-warning btn-sm" onclick="alert('Función en desarrollo')">
+                                            <i class="bi bi-play-circle me-1"></i>Iniciar
                                         </button>
-                                        <ul class="dropdown-menu">
-                                            {% if appointment.status.value == 'scheduled' %}
-                                            <li>
-                                                <form method="post" action="{{ url_for('appointments.confirm_appointment', appointment_id=appointment.id) }}" class="d-inline">
-                                                    <button type="submit" class="dropdown-item text-info">
-                                                        <i class="bi bi-check-circle me-2"></i>Confirmar
-                                                    </button>
-                                                </form>
-                                            </li>
-                                            {% endif %}
-                                            
-                                            {% if appointment.status.value == 'in_progress' %}
-                                            <li>
-                                                <button class="dropdown-item text-success" onclick="completeAppointment({{ appointment.id }})">
-                                                    <i class="bi bi-check-circle-fill me-2"></i>Completar
-                                                </button>
-                                            </li>
-                                            {% endif %}
-                                            
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <button class="dropdown-item text-danger" onclick="cancelAppointment({{ appointment.id }})">
-                                                    <i class="bi bi-x-circle me-2"></i>Cancelar
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </div>
+                                    {% elif appointment.status.value == 'in_progress' %}
+                                        <button class="btn btn-success btn-sm" 
+                                                onclick="showCompleteModal({{ appointment.id }})">
+                                            <i class="bi bi-check-circle me-1"></i>Completar
+                                        </button>
                                     {% endif %}
                                 </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
-                <h4 class="mt-3 text-muted">No hay citas para esta fecha</h4>
-                <p class="text-muted">¿Quieres programar una nueva cita?</p>
-                <a href="{{ url_for('appointments.create_appointment') }}?date={{ date_filter }}" class="btn btn-primary">
-                    <i class="bi bi-plus me-1"></i>Programar Cita
-                </a>
-            </div>
-            {% endif %}
+
+                                <!-- Ver detalles -->
+                                <div>
+                                    <a href="#" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-eye me-1"></i>Ver
+                                    </a>
+                                    {% if appointment.status.value in ['scheduled', 'confirmed'] %}
+                                        <button class="btn btn-outline-danger btn-sm" 
+                                                onclick="showCancelModal({{ appointment.id }})">
+                                            <i class="bi bi-x-circle me-1"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
         </div>
-    </div>
+    {% else %}
+        <!-- Sin Citas -->
+        <div class="text-center py-5">
+            <i class="bi bi-calendar-x display-1 text-muted"></i>
+            <h4 class="mt-3">No hay citas</h4>
+            <p class="text-muted">No se encontraron citas para los filtros seleccionados.</p>
+            <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Crear Primera Cita
+            </a>
+        </div>
+    {% endif %}
 </div>
 
-<!-- Modales -->
-<!-- Modal para completar cita -->
+<!-- Modal para Completar -->
 <div class="modal fade" id="completeModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -221,26 +226,23 @@
                 <h5 class="modal-title">Completar Cita</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" id="completeForm">
+            <form id="completeForm">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="completion_notes" class="form-label">Notas de la consulta</label>
-                        <textarea class="form-control" id="completion_notes" name="completion_notes" 
-                                  rows="4" placeholder="Resumen de la consulta, tratamiento aplicado, recomendaciones..."></textarea>
+                        <label for="completion_notes" class="form-label">Notas de Finalización</label>
+                        <textarea class="form-control" id="completion_notes" name="completion_notes" rows="3"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle-fill me-1"></i>Completar Cita
-                    </button>
+                    <button type="submit" class="btn btn-success">Completar</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal para cancelar cita -->
+<!-- Modal para Cancelar -->
 <div class="modal fade" id="cancelModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -248,23 +250,19 @@
                 <h5 class="modal-title">Cancelar Cita</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" id="cancelForm">
+            <form id="cancelForm">
                 <div class="modal-body">
                     <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        ¿Estás seguro de que deseas cancelar esta cita?
+                        ¿Está seguro de que desea cancelar esta cita?
                     </div>
                     <div class="mb-3">
-                        <label for="cancellation_reason" class="form-label">Motivo de cancelación</label>
-                        <textarea class="form-control" id="cancellation_reason" name="cancellation_reason" 
-                                  rows="3" placeholder="Razón por la cual se cancela la cita..."></textarea>
+                        <label for="cancellation_reason" class="form-label">Motivo</label>
+                        <textarea class="form-control" id="cancellation_reason" name="cancellation_reason" rows="2" required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No Cancelar</button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-x-circle me-1"></i>Confirmar Cancelación
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                    <button type="submit" class="btn btn-danger">Sí, Cancelar</button>
                 </div>
             </form>
         </div>
@@ -274,14 +272,59 @@
 
 {% block extra_js %}
 <script>
-function completeAppointment(appointmentId) {
-    document.getElementById('completeForm').action = `/appointments/${appointmentId}/complete`;
-    new bootstrap.Modal(document.getElementById('completeModal')).show();
+let currentAppointmentId = null;
+
+function showCompleteModal(appointmentId) {
+    currentAppointmentId = appointmentId;
+    const modal = new bootstrap.Modal(document.getElementById('completeModal'));
+    modal.show();
 }
 
-function cancelAppointment(appointmentId) {
-    document.getElementById('cancelForm').action = `/appointments/${appointmentId}/cancel`;
-    new bootstrap.Modal(document.getElementById('cancelModal')).show();
+function showCancelModal(appointmentId) {
+    currentAppointmentId = appointmentId;
+    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+    modal.show();
 }
+
+// Manejar envío de formularios
+document.getElementById('completeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (currentAppointmentId) {
+        const formData = new FormData(this);
+        const endpoint = `{{ url_for('appointments.complete_appointment', appointment_id=0) }}`.replace('0', currentAppointmentId);
+        
+        fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Error al completar la cita');
+            }
+        });
+    }
+});
+
+document.getElementById('cancelForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (currentAppointmentId) {
+        const formData = new FormData(this);
+        const endpoint = `{{ url_for('appointments.cancel_appointment', appointment_id=0) }}`.replace('0', currentAppointmentId);
+        
+        fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Error al cancelar la cita');
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

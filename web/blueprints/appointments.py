@@ -17,7 +17,7 @@ appointments_bp = Blueprint('appointments', __name__, template_folder='../templa
 @appointments_bp.route('/')
 def list_appointments():
     """
-    RUTA: Lista de citas con filtros
+    RUTA: Lista de citas con filtros - VERSIÓN ACTUALIZADA
     """
     try:
         container = get_container()
@@ -37,13 +37,22 @@ def list_appointments():
             filter_date = date.today()
             date_filter = filter_date.strftime('%Y-%m-%d')
         
-        # Obtener citas
+        # Calcular fechas para navegación
+        prev_date = (filter_date - timedelta(days=1)).strftime('%Y-%m-%d')
+        next_date = (filter_date + timedelta(days=1)).strftime('%Y-%m-%d')
+        today_str = date.today().strftime('%Y-%m-%d')
+        tomorrow_str = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
+        is_today = filter_date == date.today()
+        
+        # Obtener citas (SIN validación de fecha pasada para consulta)
         if status_filter and status_filter != 'all':
             try:
                 status_enum = AppointmentStatus(status_filter)
                 appointments = appointment_service.get_all_appointments(status_filter=status_enum)
                 # Filtrar por fecha
-                appointments = [apt for apt in appointments if apt.appointment_date.date() == filter_date]
+                if date_filter != date.today().strftime('%Y-%m-%d'):  # Solo filtrar si no es hoy
+                    appointments = [apt for apt in appointments 
+                        if apt.appointment_date.date() == filter_date]
             except ValueError:
                 appointments = appointment_service.get_appointments_by_date(filter_date)
         else:
@@ -86,7 +95,12 @@ def list_appointments():
             date_filter=date_filter,
             status_filter=status_filter,
             appointment_statuses=AppointmentStatus,
-            filter_date_obj=filter_date
+            filter_date_obj=filter_date,
+            prev_date=prev_date,
+            next_date=next_date,
+            today_str=today_str,
+            tomorrow_str=tomorrow_str,
+            is_today=is_today
         )
         
     except Exception as e:
@@ -97,7 +111,13 @@ def list_appointments():
             appointments_with_info=[],
             date_filter=date.today().strftime('%Y-%m-%d'),
             status_filter='all',
-            appointment_statuses=AppointmentStatus
+            appointment_statuses=AppointmentStatus,
+            filter_date_obj=date.today(),
+            prev_date=(date.today() - timedelta(days=1)).strftime('%Y-%m-%d'),
+            next_date=(date.today() + timedelta(days=1)).strftime('%Y-%m-%d'),
+            today_str=date.today().strftime('%Y-%m-%d'),
+            tomorrow_str=(date.today() + timedelta(days=1)).strftime('%Y-%m-%d'),
+            is_today=True
         )
 
 @appointments_bp.route('/create', methods=['GET', 'POST'])
@@ -395,14 +415,44 @@ def get_status_color(status: AppointmentStatus) -> str:
     }
     return color_map.get(status, '#6c757d')
 
-@appointments_bp.route('/<int:appointment_id>/start', methods=['POST'])
-def start_appointment(appointment_id):
-    """Cambiar estado a 'in_progress'"""
-    # Implementar lógica para cambiar estado
-    pass
 
 @appointments_bp.route('/<int:appointment_id>/edit', methods=['GET', 'POST'])
 def edit_appointment(appointment_id):
     """Editar detalles de la cita"""
     # Implementar edición de citas
     pass
+
+@appointments_bp.route('/<int:appointment_id>/start', methods=['POST'])
+def start_appointment(appointment_id):
+    """
+    RUTA: Iniciar atención de cita (cambiar a 'in_progress')
+    """
+    try:
+        container = get_container()
+        appointment_service = container.get_appointment_service()
+        
+        # Obtener la cita
+        appointment = appointment_service.get_appointment_by_id(appointment_id)
+        if not appointment:
+            flash('Cita no encontrada.', 'error')
+            return redirect(url_for('appointments.list_appointments'))
+        
+        # Verificar que esté en estado confirmado
+        if appointment.status.value != 'confirmed':
+            flash('Solo se pueden iniciar citas confirmadas.', 'error')
+            return redirect(url_for('appointments.list_appointments'))
+        
+        # Cambiar estado a 'in_progress'
+        # Nota: Necesitarás implementar este método en el service
+        appointment_service.start_appointment(appointment_id)
+        
+        flash('Atención iniciada exitosamente.', 'success')
+        return redirect(url_for('appointments.list_appointments'))
+        
+    except ValueError as e:
+        flash(str(e), 'error')
+    except Exception as e:
+        print(f"Error iniciando cita: {e}")
+        flash('Error iniciando atención.', 'error')
+    
+    return redirect(url_for('appointments.list_appointments'))

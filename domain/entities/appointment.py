@@ -47,6 +47,8 @@ class Appointment:
     
     def __post_init__(self):
         """Validaciones de negocio"""
+
+        """
         if not self.pet_id:
             raise ValueError("Pet ID is required")
         
@@ -55,7 +57,19 @@ class Appointment:
         
         if self.appointment_date < datetime.now():
             raise ValueError("Cannot schedule appointments in the past")
-    
+        """
+        if self.end_time is None:
+            end_datetime = self.appointment_date + timedelta(minutes=self.duration_minutes)
+            object.__setattr__(self, 'end_time', end_datetime)
+        
+            # COMENTAR esta validación para permitir cargar citas existentes
+            # Solo validar fechas pasadas al CREAR nuevas citas, no al cargar existentes
+            # if self.appointment_date.replace(tzinfo=None) < datetime.now():
+            #     raise ValueError("Cannot schedule appointments in the past")
+            
+        if self.duration_minutes <= 0:
+            raise ValueError("Duration must be positive")
+        
     @property
     def end_time(self) -> datetime:
         """Calcula la hora de finalización de la cita"""

@@ -270,3 +270,32 @@ class AppointmentService:
         }
         
         return duration_map.get(appointment_type, 30)
+    
+    def start_appointment(self, appointment_id: int) -> Appointment:
+        """
+        Inicia una cita confirmada (cambia estado a 'in_progress')
+        
+        Args:
+            appointment_id: ID de la cita a iniciar
+            
+        Returns:
+            Appointment: La cita actualizada
+            
+        Raises:
+            ValueError: Si la cita no existe o no se puede iniciar
+        """
+        appointment = self._appointment_repository.find_by_id(appointment_id)
+        if not appointment:
+            raise ValueError("Appointment not found")
+        
+        if appointment.status != AppointmentStatus.CONFIRMED:
+            raise ValueError("Only confirmed appointments can be started")
+        
+        # Actualizar estado
+        appointment.status = AppointmentStatus.IN_PROGRESS
+        appointment.updated_at = datetime.now()
+        
+        # Guardar cambios
+        updated_appointment = self._appointment_repository.update(appointment)
+        
+        return updated_appointment
