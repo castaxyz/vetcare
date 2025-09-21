@@ -176,21 +176,19 @@
                         <div class="form-section">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    {% if pet.is_active %}
-                                    <button type="button" 
-                                            class="btn btn-outline-warning"
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deactivateModal">
-                                        <i class="bi bi-archive me-2"></i>Desactivar Mascota
-                                    </button>
-                                    {% else %}
-                                    <form method="post" action="{{ url_for('pets.deactivate_pet', pet_id=pet.id) }}" class="d-inline">
-                                        <input type="hidden" name="activate" value="true">
+                                    <form method="post" action="{{ url_for('pets.toggle_pet_status', pet_id=pet.id) }}" class="d-inline">
+                                        {% if pet.is_active %}
+                                        <button type="submit" 
+                                                class="btn btn-outline-warning"
+                                                onclick="return confirm('¿Está seguro de desactivar esta mascota?')">
+                                            <i class="bi bi-archive me-2"></i>Desactivar Mascota
+                                        </button>
+                                        {% else %}
                                         <button type="submit" class="btn btn-outline-success">
                                             <i class="bi bi-check-circle me-2"></i>Activar Mascota
                                         </button>
+                                        {% endif %}
                                     </form>
-                                    {% endif %}
                                 </div>
                                 <div>
                                     <a href="{{ url_for('pets.view_pet', pet_id=pet.id) }}" 
@@ -245,37 +243,6 @@
     </div>
 </div>
 
-<!-- Modal de Confirmación para Desactivar -->
-{% if pet.is_active %}
-<div class="modal fade" id="deactivateModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>
-                    Desactivar Mascota
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>¿Está seguro de que desea desactivar a <strong>{{ pet.name }}</strong>?</p>
-                <p class="text-muted small">
-                    La mascota no se eliminará, pero no aparecerá en búsquedas normales. 
-                    Podrá reactivarla desde esta misma página en cualquier momento.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <form method="post" action="{{ url_for('pets.deactivate_pet', pet_id=pet.id) }}" class="d-inline">
-                    <button type="submit" class="btn btn-warning">
-                        <i class="bi bi-archive me-2"></i>Desactivar
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}

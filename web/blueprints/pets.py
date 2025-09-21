@@ -1,6 +1,6 @@
 """
-EXPLICACIÓN: Blueprint para gestión completa de mascotas.
-Implementa CRUD con validaciones específicas y relación con propietarios.
+EXPLICACIÓN: Blueprint para gestión completa de mascotas (VERSIÓN CORREGIDA).
+Simplificado y adaptado al repository SQLPetRepository existente.
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
@@ -15,12 +15,12 @@ pets_bp = Blueprint('pets', __name__, template_folder='../templates/pets')
 @pets_bp.route('/')
 def list_pets():
     """
-    RUTA: Lista de todas las mascotas
+    RUTA: Lista de todas las mascotas con información del propietario
     """
     try:
         container = get_container()
         pet_service = container.get_pet_service()
-        client_service = container.get_client_service()  # ← Agregar esto
+        client_service = container.get_client_service()
         
         # Verificar si hay filtros
         search_query = request.args.get('search', '').strip()
@@ -32,7 +32,6 @@ def list_pets():
         else:
             pets = pet_service.get_all_pets(active_only=not show_inactive)
         
-        # ← AGREGAR ESTA SECCIÓN ←
         # Cargar información de propietarios
         pets_with_owners = []
         for pet in pets:
@@ -42,17 +41,15 @@ def list_pets():
                     'pet': pet,
                     'owner': owner
                 })
-            except Exception as e:
-                print(f"Error cargando propietario para mascota {pet.id}: {e}")
+            except:
                 pets_with_owners.append({
                     'pet': pet,
                     'owner': None
                 })
-        # ← FIN DE SECCIÓN A AGREGAR ←
         
         return render_template(
             'pets/list.html', 
-            pets_with_owners=pets_with_owners,  # ← Cambiar esto
+            pets_with_owners=pets_with_owners,
             search_query=search_query,
             show_inactive=show_inactive
         )
@@ -60,7 +57,7 @@ def list_pets():
     except Exception as e:
         print(f"Error listando mascotas: {e}")
         flash('Error cargando lista de mascotas.', 'error')
-        return render_template('pets/list.html', pets_with_owners=[], search_query='')  # ← Cambiar esto
+        return render_template('pets/list.html', pets_with_owners=[], search_query='', show_inactive=False)
 
 @pets_bp.route('/create', methods=['GET', 'POST'])
 def create_pet():
@@ -68,15 +65,22 @@ def create_pet():
     RUTA: Crear nueva mascota
     """
     if request.method == 'GET':
-        # Obtener cliente si viene como parámetro
-        client_id = request.args.get('client_id')
-        client = None
+        # Obtener mascotas activas para el dropdown (si es necesario)
+        container = get_container()
         
-        if client_id:
+        # Obtener veterinarios si es necesario
+        user_repo = container.get_user_repository()
+        all_users = user_repo.find_all()
+        veterinarians = [user for user in all_users if user.role.value in ['veterinarian', 'admin'] and user.is_active]
+        
+        # Datos pre-seleccionados
+        selected_client_id = request.args.get('client_id')
+        selected_client = None
+        
+        if selected_client_id:
             try:
-                container = get_container()
                 client_service = container.get_client_service()
-                client = client_service.get_client_by_id(int(client_id))
+                selected_client = client_service.get_client_by_id(int(selected_client_id))
             except:
                 pass
         
@@ -84,31 +88,51 @@ def create_pet():
             'pets/create.html',
             species=PetSpecies,
             genders=PetGender,
-            selected_client=client
+            selected_client=selected_client
         )
     
     try:
-        # Obtener datos del formulario
+        # Obtener y validar datos del formulario
+        name = request.form.get('name', '').strip()
+        if not name:
+            raise ValueError("El nombre de la mascota es obligatorio")
+        
+        client_id = request.form.get('client_id')
+        if not client_id:
+            raise ValueError("Debe seleccionar un propietario")
+        
+        species = request.form.get('species')
+        if not species:
+            raise ValueError("Debe seleccionar una especie")
+        
+        gender = request.form.get('gender')
+        if not gender:
+            raise ValueError("Debe seleccionar el sexo de la mascota")
+        
+        # Procesar peso
+        weight = None
+        if request.form.get('weight'):
+            try:
+                weight = float(request.form.get('weight'))
+                if weight <= 0:
+                    raise ValueError("El peso debe ser mayor a 0")
+            except ValueError:
+                raise ValueError("El peso debe ser un número válido")
+        
+        # Preparar datos
         pet_data = {
-            'name': request.form.get('name', '').strip(),
-            'species': request.form.get('species', 'other'),
+            'name': name,
+            'species': species,
             'breed': request.form.get('breed', '').strip() or None,
             'birth_date': request.form.get('birth_date') or None,
-            'gender': request.form.get('gender', 'unknown'),
+            'gender': gender,
             'color': request.form.get('color', '').strip() or None,
-            'weight': request.form.get('weight') or None,
+            'weight': weight,
             'microchip_number': request.form.get('microchip_number', '').strip() or None,
-            'client_id': int(request.form.get('client_id'))
+            'client_id': int(client_id)
         }
         
-        # Convertir peso a float si existe
-        if pet_data['weight']:
-            try:
-                pet_data['weight'] = float(pet_data['weight'])
-            except ValueError:
-                pet_data['weight'] = None
-        
-        # Crear mascota usando el service
+        # Crear mascota
         container = get_container()
         pet_service = container.get_pet_service()
         
@@ -119,27 +143,18 @@ def create_pet():
         
     except ValueError as e:
         flash(str(e), 'error')
-        # Filtrar campos que podrían causar conflicto
-        form_data = {k: v for k, v in pet_data.items() 
-                    if k not in ['species', 'gender']}
+        # Recargar formulario manteniendo datos
         return render_template(
             'pets/create.html',
             species=PetSpecies,
             genders=PetGender,
-            selected_species=pet_data.get('species'),
-            selected_gender=pet_data.get('gender'),
-            **form_data
+            **request.form.to_dict()
         )
     
     except Exception as e:
         print(f"Error creando mascota: {e}")
-        flash('Error registrando mascota.', 'error')
-        return render_template(
-            'pets/create.html',
-            species=PetSpecies,
-            genders=PetGender,
-            **pet_data
-        )
+        flash('Error registrando mascota. Intente nuevamente.', 'error')
+        return redirect(url_for('pets.create_pet'))
 
 @pets_bp.route('/<int:pet_id>')
 def view_pet(pet_id):
@@ -149,7 +164,6 @@ def view_pet(pet_id):
     try:
         container = get_container()
         pet_service = container.get_pet_service()
-        appointment_service = container.get_appointment_service()
         
         # Obtener resumen completo de la mascota
         pet_summary = pet_service.get_pet_summary(pet_id)
@@ -158,9 +172,13 @@ def view_pet(pet_id):
             flash('Mascota no encontrada.', 'error')
             return redirect(url_for('pets.list_pets'))
         
-        # Obtener historial de citas
-        appointments = appointment_service.get_appointments_by_pet(pet_id)
-        recent_appointments = sorted(appointments, key=lambda x: x.appointment_date, reverse=True)[:5]
+        # Obtener historial de citas si existe el service
+        try:
+            appointment_service = container.get_appointment_service()
+            appointments = appointment_service.get_appointments_by_pet(pet_id)
+            recent_appointments = sorted(appointments, key=lambda x: x.appointment_date, reverse=True)[:5]
+        except:
+            recent_appointments = []
         
         return render_template(
             'pets/view.html',
@@ -176,7 +194,7 @@ def view_pet(pet_id):
 @pets_bp.route('/<int:pet_id>/edit', methods=['GET', 'POST'])
 def edit_pet(pet_id):
     """
-    RUTA: Editar mascota existente
+    RUTA: Editar mascota existente - VERSIÓN SIMPLIFICADA
     """
     try:
         container = get_container()
@@ -191,7 +209,7 @@ def edit_pet(pet_id):
     except Exception as e:
         flash('Error cargando mascota.', 'error')
         return redirect(url_for('pets.list_pets'))
-    
+
     if request.method == 'GET':
         return render_template(
             'pets/edit.html',
@@ -199,28 +217,45 @@ def edit_pet(pet_id):
             species=PetSpecies,
             genders=PetGender
         )
-    
+
+    # Procesar actualización
     try:
-        # Obtener datos del formulario
+        # Validar campos básicos
+        name = request.form.get('name', '').strip()
+        if not name:
+            raise ValueError("El nombre de la mascota es obligatorio")
+        
+        species = request.form.get('species')
+        if not species:
+            raise ValueError("Debe seleccionar una especie")
+        
+        gender = request.form.get('gender')
+        if not gender:
+            raise ValueError("Debe seleccionar el sexo de la mascota")
+        
+        # Procesar peso
+        weight = None
+        if request.form.get('weight'):
+            try:
+                weight = float(request.form.get('weight'))
+                if weight <= 0:
+                    raise ValueError("El peso debe ser mayor a 0")
+            except ValueError:
+                raise ValueError("El peso debe ser un número válido")
+        
+        # Preparar datos de actualización
         pet_data = {
-            'name': request.form.get('name', '').strip(),
-            'species': request.form.get('species'),
+            'name': name,
+            'species': species,
             'breed': request.form.get('breed', '').strip() or None,
             'birth_date': request.form.get('birth_date') or None,
-            'gender': request.form.get('gender'),
+            'gender': gender,
             'color': request.form.get('color', '').strip() or None,
-            'weight': request.form.get('weight') or None,
-            'microchip_number': request.form.get('microchip_number', '').strip() or None,
+            'weight': weight,
+            'microchip_number': request.form.get('microchip_number', '').strip() or None
         }
         
-        # Convertir peso a float si existe        
-        if pet_data['weight']:
-            try:
-                pet_data['weight'] = float(pet_data['weight'])
-            except (ValueError, TypeError):
-                pet_data['weight'] = None
-        
-        # Actualizar mascota usando el service
+        # Actualizar mascota
         updated_pet = pet_service.update_pet(pet_id, pet_data)
         
         flash(f'Mascota {updated_pet.name} actualizada exitosamente.', 'success')
@@ -228,27 +263,17 @@ def edit_pet(pet_id):
         
     except ValueError as e:
         flash(str(e), 'error')
-        return render_template(
-            'pets/edit.html',
-            pet=pet,
-            species=PetSpecies,
-            genders=PetGender
-        )
-    
+        return render_template('pets/edit.html', pet=pet, species=PetSpecies, genders=PetGender)
+
     except Exception as e:
         print(f"Error actualizando mascota: {e}")
-        flash('Error actualizando mascota.', 'error')
-        return render_template(
-            'pets/edit.html',
-            pet=pet,
-            species=PetSpecies,
-            genders=PetGender
-        )
-
-@pets_bp.route('/<int:pet_id>/deactivate', methods=['POST'])
-def deactivate_pet(pet_id):
+        flash('Error actualizando mascota. Intente nuevamente.', 'error')
+        return render_template('pets/edit.html', pet=pet, species=PetSpecies, genders=PetGender)
+    
+@pets_bp.route('/<int:pet_id>/toggle-status', methods=['POST'])
+def toggle_pet_status(pet_id):
     """
-    RUTA: Desactivar/Activar mascota (toggle)
+    RUTA: Activar/Desactivar mascota
     """
     try:
         container = get_container()
@@ -259,30 +284,22 @@ def deactivate_pet(pet_id):
             flash('Mascota no encontrada.', 'error')
             return redirect(url_for('pets.list_pets'))
         
-        # Verificar si es una acción de activar
-        activate = request.form.get('activate') == 'true'
-        
-        if activate:
-            # Activar mascota
-            success = pet_service.activate_pet(pet_id)  # Necesitas crear este método
-            if success:
-                flash(f'Mascota {pet.name} activada exitosamente.', 'success')
-            else:
-                flash('Error activando mascota.', 'error')
+        # Cambiar estado
+        if pet.is_active:
+            # Desactivar mascota
+            pet_service.deactivate_pet(pet_id)
+            flash(f'Mascota {pet.name} desactivada exitosamente.', 'success')
         else:
-            # Desactivar mascota (comportamiento original)
-            success = pet_service.deactivate_pet(pet_id)
-            if success:
-                flash(f'Mascota {pet.name} desactivada exitosamente.', 'success')
-            else:
-                flash('Error desactivando mascota.', 'error')
+            # Activar mascota usando update_pet
+            pet_service.update_pet(pet_id, {'is_active': True})
+            flash(f'Mascota {pet.name} activada exitosamente.', 'success')
         
         return redirect(url_for('pets.edit_pet', pet_id=pet_id))
         
     except Exception as e:
         print(f"Error cambiando estado de mascota: {e}")
         flash('Error cambiando estado de mascota.', 'error')
-        return redirect(url_for('pets.list_pets'))
+        return redirect(url_for('pets.edit_pet', pet_id=pet_id))
 
 @pets_bp.route('/by-client/<int:client_id>')
 def pets_by_client(client_id):
@@ -326,15 +343,14 @@ def search_pets():
         
         container = get_container()
         pet_service = container.get_pet_service()
+        client_service = container.get_client_service()
         
         pets = pet_service.search_pets(query)
         
         # Formatear para JSON
         results = []
         for pet in pets[:10]:  # Máximo 10 resultados
-            # Obtener info del propietario
             try:
-                client_service = container.get_client_service()
                 owner = client_service.get_client_by_id(pet.client_id)
                 owner_name = owner.full_name if owner else "Propietario desconocido"
             except:
