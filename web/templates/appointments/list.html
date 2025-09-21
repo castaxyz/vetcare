@@ -58,16 +58,7 @@
 
     <!-- Debug Info (temporal) -->
     {% if date_filter %}
-    <div class="alert alert-info">
-        <strong>Debug:</strong> Filtrando por fecha: {{ date_filter }} 
-        | Encontradas: {{ appointments_with_info|length }} citas
-        {% if appointments_with_info %}
-        | Fechas de citas: 
-        {% for info in appointments_with_info %}
-            {{ info.appointment.appointment_date.strftime('%Y-%m-%d') }}{% if not loop.last %}, {% endif %}
-        {% endfor %}
-        {% endif %}
-    </div>
+    
     {% endif %}
     {% if appointments_with_info %}
         <div class="row">
