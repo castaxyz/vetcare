@@ -418,9 +418,96 @@ def get_status_color(status: AppointmentStatus) -> str:
 
 @appointments_bp.route('/<int:appointment_id>/edit', methods=['GET', 'POST'])
 def edit_appointment(appointment_id):
-    """Editar detalles de la cita"""
-    # Implementar edición de citas
-    pass
+    """
+    RUTA: Ver y editar detalles de una cita específica
+    GET: Muestra formulario con datos actuales
+    POST: Procesa actualización
+    """
+    try:
+        container = get_container()
+        appointment_service = container.get_appointment_service()
+        
+        # Obtener cita
+        appointment = appointment_service.get_appointment_by_id(appointment_id)
+        if not appointment:
+            flash('Cita no encontrada.', 'error')
+            return redirect(url_for('appointments.list_appointments'))
+        
+        # Obtener información relacionada
+        pet_service = container.get_pet_service()
+        client_service = container.get_client_service()
+        user_repo = container.get_user_repository()
+        
+        pet = pet_service.get_pet_by_id(appointment.pet_id)
+        client = None
+        veterinarian = None
+        creator = None
+        
+        if pet:
+            client = client_service.get_client_by_id(pet.client_id)
+        
+        if appointment.veterinarian_id:
+            veterinarian = user_repo.find_by_id(appointment.veterinarian_id)
+        
+        if appointment.created_by:
+            creator = user_repo.find_by_id(appointment.created_by)
+        
+        if request.method == 'GET':
+            # Obtener tipos de cita para el dropdown
+            from domain.entities.appointment import AppointmentType
+            
+            return render_template(
+                'appointments/edit.html',
+                appointment=appointment,
+                pet=pet,
+                client=client,
+                veterinarian=veterinarian,
+                creator=creator,
+                appointment_types=AppointmentType
+            )
+        
+        # POST - Procesar actualización
+        try:
+            # Obtener datos del formulario
+            date_str = request.form.get('appointment_date')
+            time_str = request.form.get('appointment_time')
+            
+            # Combinar fecha y hora
+            from datetime import datetime
+            datetime_str = f"{date_str} {time_str}"
+            appointment_datetime = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
+            
+            # Datos actualizados
+            update_data = {
+                'appointment_date': appointment_datetime,
+                'duration_minutes': int(request.form.get('duration_minutes', 30)),
+                'appointment_type': request.form.get('appointment_type'),
+                'reason': request.form.get('reason', '').strip() or None,
+                'notes': request.form.get('notes', '').strip() or None
+            }
+            
+            # Actualizar cita usando el service
+            updated_appointment = appointment_service.update_appointment(appointment_id, update_data)
+            
+            flash('Cita actualizada exitosamente.', 'success')
+            return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
+            
+        except ValueError as e:
+            flash(str(e), 'error')
+            return render_template(
+                'appointments/edit.html',
+                appointment=appointment,
+                pet=pet,
+                client=client,
+                veterinarian=veterinarian,
+                creator=creator,
+                appointment_types=AppointmentType
+            )
+        
+    except Exception as e:
+        print(f"Error en edit_appointment: {e}")
+        flash('Error cargando información de la cita.', 'error')
+        return redirect(url_for('appointments.list_appointments'))
 
 @appointments_bp.route('/<int:appointment_id>/start', methods=['POST'])
 def start_appointment(appointment_id):
