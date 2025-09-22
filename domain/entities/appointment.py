@@ -81,19 +81,30 @@ class Appointment:
         now = datetime.now()
         return now <= self.appointment_date <= now + timedelta(hours=24)
     
+    # En domain/entities/appointment.py
     @property
     def can_be_modified(self) -> bool:
         """Determina si la cita puede ser modificada"""
-        return self.status in [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED]
-    
+        return self.status in [
+            AppointmentStatus.SCHEDULED, 
+            AppointmentStatus.CONFIRMED, 
+            AppointmentStatus.IN_PROGRESS  # AGREGAR ESTO
+        ]
+
+
     def mark_as_completed(self, notes: Optional[str] = None):
         """Marca la cita como completada"""
-        if not self.can_be_modified:
-            raise ValueError("Cannot modify this appointment")
+        # CAMBIAR la validación:
+        if self.status != AppointmentStatus.IN_PROGRESS:
+            raise ValueError("Only appointments in progress can be completed")
         
         self.status = AppointmentStatus.COMPLETED
         if notes:
-            self.notes = notes
+            # Si tienes campo completion_notes, usarlo; si no, usar notes
+            if hasattr(self, 'completion_notes'):
+                self.completion_notes = notes
+            else:
+                self.notes = notes
         self.updated_at = datetime.now()
     
     def cancel(self, reason: Optional[str] = None):

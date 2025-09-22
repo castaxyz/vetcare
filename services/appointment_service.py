@@ -299,3 +299,40 @@ class AppointmentService:
         updated_appointment = self._appointment_repository.update(appointment)
         
         return updated_appointment
+    
+    def update_appointment(self, appointment_id: int, update_data: dict) -> Appointment:
+        """
+        Actualiza los datos de una cita existente
+        """
+        appointment = self._appointment_repository.find_by_id(appointment_id)
+        if not appointment:
+            raise ValueError("Appointment not found")
+        
+        try:
+            # Validar que no se esté moviendo a una fecha pasada (solo si se cambia la fecha)
+            if 'appointment_date' in update_data:
+                new_date = update_data['appointment_date']
+                if new_date.replace(tzinfo=None) < datetime.now():
+                    raise ValueError("Cannot reschedule to past date")
+            
+            # Convertir appointment_type si viene como string
+            if 'appointment_type' in update_data:
+                if isinstance(update_data['appointment_type'], str):
+                    update_data['appointment_type'] = AppointmentType(update_data['appointment_type'])
+            
+            # Actualizar campos
+            for field, value in update_data.items():
+                if hasattr(appointment, field) and value is not None:
+                    setattr(appointment, field, value)
+            
+            # Actualizar timestamp
+            appointment.updated_at = datetime.now()
+            
+            # Guardar cambios
+            updated_appointment = self._appointment_repository.update(appointment)
+            
+            return updated_appointment
+            
+        except Exception as e:
+            print(f"Error in update_appointment: {e}")
+            raise e

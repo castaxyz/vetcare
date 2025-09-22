@@ -257,9 +257,7 @@ def view_appointment(appointment_id):
 
 @appointments_bp.route('/<int:appointment_id>/confirm', methods=['POST'])
 def confirm_appointment(appointment_id):
-    """
-    RUTA: Confirmar cita programada
-    """
+    """RUTA: Confirmar cita programada"""
     try:
         container = get_container()
         appointment_service = container.get_appointment_service()
@@ -273,13 +271,12 @@ def confirm_appointment(appointment_id):
         print(f"Error confirmando cita: {e}")
         flash('Error confirmando cita.', 'error')
     
-    return redirect(url_for('appointments.view_appointment', appointment_id=appointment_id))
+    # CAMBIO: Redirigir de vuelta a edit en lugar de lista
+    return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
 
 @appointments_bp.route('/<int:appointment_id>/complete', methods=['POST'])
 def complete_appointment(appointment_id):
-    """
-    RUTA: Completar cita
-    """
+    """RUTA: Completar cita"""
     try:
         completion_notes = request.form.get('completion_notes', '').strip()
         
@@ -295,13 +292,12 @@ def complete_appointment(appointment_id):
         print(f"Error completando cita: {e}")
         flash('Error completando cita.', 'error')
     
-    return redirect(url_for('appointments.view_appointment', appointment_id=appointment_id))
+    # CAMBIO: Redirigir de vuelta a edit en lugar de lista
+    return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
 
 @appointments_bp.route('/<int:appointment_id>/cancel', methods=['POST'])
 def cancel_appointment(appointment_id):
-    """
-    RUTA: Cancelar cita
-    """
+    """RUTA: Cancelar cita"""
     try:
         cancellation_reason = request.form.get('cancellation_reason', '').strip()
         
@@ -317,7 +313,8 @@ def cancel_appointment(appointment_id):
         print(f"Error cancelando cita: {e}")
         flash('Error cancelando cita.', 'error')
     
-    return redirect(url_for('appointments.view_appointment', appointment_id=appointment_id))
+    # CAMBIO: Redirigir de vuelta a edit en lugar de lista  
+    return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
 
 @appointments_bp.route('/calendar')
 def calendar_view():
@@ -442,6 +439,13 @@ def edit_appointment(appointment_id):
         client = None
         veterinarian = None
         creator = None
+
+        # En el método edit_appointment, después de obtener el pet:
+        if pet and pet.birth_date:
+            from datetime import date
+            today = date.today()
+            age = today.year - pet.birth_date.year - ((today.month, today.day) < (pet.birth_date.month, pet.birth_date.day))
+            pet.calculated_age = age  # Agregar como atributo temporal
         
         if pet:
             client = client_service.get_client_by_id(pet.client_id)
@@ -466,14 +470,17 @@ def edit_appointment(appointment_id):
                 appointment_types=AppointmentType
             )
         
-        # POST - Procesar actualización
+       # POST - Procesar actualización
         try:
             # Obtener datos del formulario
             date_str = request.form.get('appointment_date')
             time_str = request.form.get('appointment_time')
             
+            # Validar datos requeridos
+            if not date_str or not time_str:
+                raise ValueError("Date and time are required")
+            
             # Combinar fecha y hora
-            from datetime import datetime
             datetime_str = f"{date_str} {time_str}"
             appointment_datetime = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
             
@@ -486,6 +493,8 @@ def edit_appointment(appointment_id):
                 'notes': request.form.get('notes', '').strip() or None
             }
             
+            print(f"Updating appointment {appointment_id} with data: {update_data}")  # Debug
+            
             # Actualizar cita usando el service
             updated_appointment = appointment_service.update_appointment(appointment_id, update_data)
             
@@ -493,16 +502,23 @@ def edit_appointment(appointment_id):
             return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
             
         except ValueError as e:
+            print(f"ValueError in edit_appointment: {e}")  # Debug
             flash(str(e), 'error')
-            return render_template(
-                'appointments/edit.html',
-                appointment=appointment,
-                pet=pet,
-                client=client,
-                veterinarian=veterinarian,
-                creator=creator,
-                appointment_types=AppointmentType
-            )
+        except Exception as e:
+            print(f"Exception in edit_appointment: {e}")  # Debug
+            flash('Error actualizando la cita.', 'error')
+
+        # En caso de error, recargar la página con los tipos de cita
+        from domain.entities.appointment import AppointmentType
+        return render_template(
+            'appointments/edit.html',
+            appointment=appointment,
+            pet=pet,
+            client=client,
+            veterinarian=veterinarian,
+            creator=creator,
+            appointment_types=AppointmentType
+        )
         
     except Exception as e:
         print(f"Error en edit_appointment: {e}")
@@ -511,9 +527,7 @@ def edit_appointment(appointment_id):
 
 @appointments_bp.route('/<int:appointment_id>/start', methods=['POST'])
 def start_appointment(appointment_id):
-    """
-    RUTA: Iniciar atención de cita (cambiar a 'in_progress')
-    """
+    """RUTA: Iniciar atención de cita (cambiar a 'in_progress')"""
     try:
         container = get_container()
         appointment_service = container.get_appointment_service()
@@ -522,19 +536,18 @@ def start_appointment(appointment_id):
         appointment = appointment_service.get_appointment_by_id(appointment_id)
         if not appointment:
             flash('Cita no encontrada.', 'error')
-            return redirect(url_for('appointments.list_appointments'))
+            return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
         
         # Verificar que esté en estado confirmado
         if appointment.status.value != 'confirmed':
             flash('Solo se pueden iniciar citas confirmadas.', 'error')
-            return redirect(url_for('appointments.list_appointments'))
+            return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
         
         # Cambiar estado a 'in_progress'
-        # Nota: Necesitarás implementar este método en el service
         appointment_service.start_appointment(appointment_id)
         
         flash('Atención iniciada exitosamente.', 'success')
-        return redirect(url_for('appointments.list_appointments'))
+        return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
         
     except ValueError as e:
         flash(str(e), 'error')
@@ -542,4 +555,4 @@ def start_appointment(appointment_id):
         print(f"Error iniciando cita: {e}")
         flash('Error iniciando atención.', 'error')
     
-    return redirect(url_for('appointments.list_appointments'))
+    return redirect(url_for('appointments.edit_appointment', appointment_id=appointment_id))
