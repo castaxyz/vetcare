@@ -4,7 +4,7 @@ Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.5
 
 # Base de datos
-SQLAlchemy==2.0.36
+SQLAlchemy==2.0.23
 psycopg2-binary==2.9.7  # PostgreSQL (para producción)
 
 # Seguridad y autenticación
@@ -13,8 +13,6 @@ bcrypt==4.0.1
 
 # Servidor WSGI para producción
 gunicorn==21.2.0
-uvicorn
-
 
 # Utilidades
 python-dotenv==1.0.0

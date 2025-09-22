@@ -1,9 +1,11 @@
+"""
+EXPLICACIÓN: Este archivo centraliza todas las configuraciones de la aplicación.
+Principio SOLID aplicado: Single Responsibility (una sola razón para cambiar).
+Permite diferentes configuraciones para desarrollo, testing y producción.
+"""
+
 import os
 from datetime import timedelta
-
-# Directorio base del proyecto
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-INSTANCE_DIR = os.path.join(os.path.dirname(BASE_DIR), "instance")
 
 class Config:
     """Configuración base para toda la aplicación"""
@@ -20,13 +22,13 @@ class DevelopmentConfig(Config):
     """Configuración para desarrollo local"""
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        f"sqlite:///{os.path.join(INSTANCE_DIR, 'vetcare_dev.db')}"
+        'sqlite:///vetcare_dev.db'
 
 class ProductionConfig(Config):
-    """Configuración para producción (Azure/Render)"""
+    """Configuración para producción (Azure)"""
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        f"sqlite:///{os.path.join(INSTANCE_DIR, 'vetcare_prod.db')}"
+        'sqlite:///vetcare_prod.db'
 
 class TestingConfig(Config):
     """Configuración para testing"""
