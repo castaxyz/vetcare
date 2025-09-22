@@ -1,1 +1,1 @@
-web: gunicorn vetcare.web.app:app
+web: gunicorn run:app
