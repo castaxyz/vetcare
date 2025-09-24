@@ -156,31 +156,54 @@
                 <div class="sidebar">
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link {{ 'active' if request.endpoint.startswith('dashboard') }}" 
+                            <a class="nav-link {{ 'active' if request.endpoint.startswith('dashboard') }}"
                                href="{{ url_for('dashboard.index') }}">
                                 <i class="bi bi-speedometer2 me-2"></i>Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ 'active' if request.endpoint.startswith('clients') }}" 
+                            <a class="nav-link {{ 'active' if request.endpoint.startswith('clients') }}"
                                href="{{ url_for('clients.list_clients') }}">
                                 <i class="bi bi-people me-2"></i>Clientes
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ 'active' if request.endpoint.startswith('pets') }}" 
+                            <a class="nav-link {{ 'active' if request.endpoint.startswith('pets') }}"
                                href="{{ url_for('pets.list_pets') }}">
                                 <i class="bi bi-heart me-2"></i>Mascotas
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ 'active' if request.endpoint.startswith('appointments') }}" 
+                            <a class="nav-link {{ 'active' if request.endpoint.startswith('appointments') }}"
                                href="{{ url_for('appointments.list_appointments') }}">
                                 <i class="bi bi-calendar-check me-2"></i>Citas
                             </a>
                         </li>
 
-                        
+                        <!-- Separador -->
+                        <li class="nav-item">
+                            <hr class="text-muted my-2">
+                        </li>
+
+                        <!-- Módulos de Facturación e Inventario -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if request.endpoint.startswith('invoices') }}"
+                               href="{{ url_for('invoices.list_invoices') }}">
+                                <i class="bi bi-receipt me-2"></i>Facturación
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if request.endpoint.startswith('inventory') }}"
+                               href="{{ url_for('inventory.list_products') }}">
+                                <i class="bi bi-box-seam me-2"></i>Inventario
+                            </a>
+                        </li>
+
+                        <!-- Separador -->
+                        <li class="nav-item">
+                            <hr class="text-muted my-2">
+                        </li>
+
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('appointments.calendar_view') }}">
                                 <i class="bi bi-calendar3 me-2"></i>Calendario
@@ -192,8 +215,6 @@
                                 <i class="bi bi-graph-up me-2"></i>Reportes
                             </a>
                         </li>
-                        
-                        
                         {% endif %}
                     </ul>
                 </div>

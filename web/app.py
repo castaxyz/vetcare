@@ -63,27 +63,35 @@ def create_app(config_name: str = None) -> Flask:
 
 def register_blueprints(app: Flask):
     """Registra todos los blueprints de la aplicación"""
-    
+
     # Blueprint de autenticación
     from web.blueprints.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
-    
+
     # Blueprint de dashboard principal
     from web.blueprints.dashboard import dashboard_bp
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
-    
+
     # Blueprint de clientes
     from web.blueprints.clients import clients_bp
     app.register_blueprint(clients_bp, url_prefix='/clients')
-    
+
     # Blueprint de mascotas
     from web.blueprints.pets import pets_bp
     app.register_blueprint(pets_bp, url_prefix='/pets')
-    
+
     # Blueprint de citas
     from web.blueprints.appointments import appointments_bp
     app.register_blueprint(appointments_bp, url_prefix='/appointments')
-    
+
+    # Blueprint de facturación
+    from web.blueprints.invoices import invoices_bp
+    app.register_blueprint(invoices_bp, url_prefix='/invoices')
+
+    # Blueprint de inventario
+    from web.blueprints.inventory import inventory_bp
+    app.register_blueprint(inventory_bp, url_prefix='/inventory')
+
     # Ruta raíz
     @app.route('/')
     def index():

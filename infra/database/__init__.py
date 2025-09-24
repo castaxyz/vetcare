@@ -1,81 +1,86 @@
 """
-Configuración central de la base de datos.
-Maneja la conexión, sesiones y inicialización de SQLAlchemy.
+EXPLICACIÓN: Módulo de inicialización de base de datos.
+Maneja la creación de tablas y configuración inicial de la base de datos.
 """
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
+from infra.database.connection import (
+    get_engine,
+    init_database,
+    create_tables as create_db_tables,
+    drop_tables as drop_db_tables,
+    get_db_session
+)
 from config.settings import config
 import os
-
-# Variable global para el engine
-_engine = None
-_session_factory = None
 
 def initialize_database(config_name: str = 'development'):
     """
     Inicializa la configuración de base de datos.
-    Debe ser llamado al inicio de la aplicación.
-    """
-    global _engine, _session_factory
-    
-    app_config = config[config_name]
-    database_url = app_config.SQLALCHEMY_DATABASE_URI
-    
-    # Configuración específica para SQLite
-    if database_url.startswith('sqlite'):
-        _engine = create_engine(
-            database_url,
-            poolclass=StaticPool,
-            pool_pre_ping=True,
-            echo=app_config.DEBUG,  # Log SQL queries en desarrollo
-            connect_args={"check_same_thread": False}  # Para SQLite
-        )
-    else:
-        # Configuración para PostgreSQL/MySQL
-        _engine = create_engine(
-            database_url,
-            pool_size=10,
-            max_overflow=20,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-            echo=app_config.DEBUG
-        )
-    
-    _session_factory = sessionmaker(bind=_engine)
 
-def get_db_session() -> Session:
+    Args:
+        config_name: Nombre de la configuración ('development', 'production', 'testing')
     """
-    Retorna una nueva sesión de base de datos.
-    Debe ser cerrada después de usar.
-    """
-    if _session_factory is None:
-        raise RuntimeError("Database not initialized. Call initialize_database() first.")
-    
-    return _session_factory()
+    # Configurar el engine de SQLAlchemy
+    engine = get_engine()
+    print(f"📊 Database engine initialized: {engine.url}")
+
+    return engine
 
 def create_tables():
     """
     Crea todas las tablas definidas en los modelos.
-    Útil para development y testing.
     """
-    if _engine is None:
-        raise RuntimeError("Database not initialized. Call initialize_database() first.")
-    
-    from infra.database.models import Base
-    Base.metadata.create_all(_engine)
+    try:
+        create_db_tables()
+        print("✅ Database tables created successfully")
+    except Exception as e:
+        print(f"❌ Error creating tables: {e}")
+        raise
 
 def drop_tables():
     """
-    Elimina todas las tablas. Solo para testing.
+    Elimina todas las tablas.
+    ¡CUIDADO! Solo usar en desarrollo.
     """
-    if _engine is None:
-        raise RuntimeError("Database not initialized. Call initialize_database() first.")
-    
-    from infra.database.models import Base
-    Base.metadata.drop_all(_engine)
+    try:
+        drop_db_tables()
+        print("⚠️ All database tables dropped")
+    except Exception as e:
+        print(f"❌ Error dropping tables: {e}")
+        raise
 
-def get_engine():
-    """Retorna el engine actual"""
-    return _engine
+def reset_database():
+    """
+    Reinicia la base de datos (elimina y crea todas las tablas).
+    ¡CUIDADO! Solo usar en desarrollo.
+    """
+    print("🔄 Resetting database...")
+    drop_tables()
+    create_tables()
+    print("✅ Database reset completed")
+
+def check_database_health():
+    """
+    Verifica el estado de la base de datos.
+    """
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            # Intentar una consulta simple
+            from sqlalchemy import text
+            result = conn.execute(text("SELECT 1"))
+            result.fetchone()
+        return True
+    except Exception as e:
+        print(f"❌ Database health check failed: {e}")
+        return False
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            # Intentar una consulta simple
+            result = conn.execute("SELECT 1")
+            result.fetchone()
+        return True
+    except Exception as e:
+        print(f"❌ Database health check failed: {e}")
+        return False
